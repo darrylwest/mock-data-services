@@ -13,7 +13,7 @@ version:
 
 build:
 	@[ -d bin ] || mkdir bin
-	go build -o bin/mack-data-proxy src/main.go
+	go build -o bin/mock-data-proxy src/main.go
 
 install-deps:
 	go get -u github.com/shuLhan/go-bindata/...

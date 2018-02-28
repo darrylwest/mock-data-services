@@ -16,11 +16,11 @@ import (
 // Config the config structure
 type Config struct {
 	Port       int
-    Target     string
+	Target     string
 	LogLevel   int
 	DbFilename string
 	Timeout    int
-    BufSize    int
+	BufSize    int
 }
 
 // NewDefaultConfig default settings
@@ -28,11 +28,11 @@ func NewDefaultConfig() *Config {
 	cfg := new(Config)
 
 	cfg.Port = 3300
-    cfg.Target = "127.0.0.1:9090"
+	cfg.Target = "127.0.0.1:9090"
 	cfg.LogLevel = 2
 	cfg.DbFilename = "data/proxy.db"
 	cfg.Timeout = 120 // seconds
-    cfg.BufSize = 64 // 1K 
+	cfg.BufSize = 64  // 1K
 
 	return cfg
 }
@@ -59,19 +59,21 @@ func ParseArgs() *Config {
 	flag.Parse()
 
 	if *vers == true {
-		fmt.Printf("Version %s\n", Version())
 		return nil
 	}
+
+	fmt.Println(logo)
+    fmt.Printf("Version %s\n", Version())
 
 	log.Info("%s Version: %s\n", filepath.Base(os.Args[0]), Version())
 
 	cfg := Config{
 		Port:       *port,
-        Target:     *target,
+		Target:     *target,
 		LogLevel:   *level,
 		DbFilename: *dbfilename,
 		Timeout:    *timeout,
-        BufSize: *bufsize,
+		BufSize:    *bufsize,
 	}
 
 	log.SetLevel(cfg.LogLevel)

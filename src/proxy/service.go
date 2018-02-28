@@ -9,7 +9,7 @@ package proxy
 
 import (
 	"fmt"
-	// "net/http"
+	"net"
 )
 
 // Service - the service struct
@@ -43,11 +43,36 @@ func (svc Service) Start() error {
 
 func (svc Service) startServer() error {
 	cfg := svc.cfg
+    port := cfg.Port
 
 	host := fmt.Sprintf(":%d", cfg.Port)
 	log.Info("start listening on port %s", host)
 
 	// open the listening socket
+    listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+    if err != nil {
+		log.Error("could not start server on %d: %v", port, err)
+		return err
+    }
 
-	return nil
+	log.Info("proxy listening on %d, proxy to %s\n", port, cfg.Target)
+
+    for {
+        sock, err := listener.Accept()
+		if err != nil {
+			log.Error("could not accept client connection", err)
+			return err
+		}
+
+        go func() {
+            defer sock.Close()
+            client := NewClient(cfg)
+
+            if err = client.handleRequest(sock); err != nil {
+                log.Error("client %s error: %s", client.id, err);
+            }
+
+            log.Info("%s closed...", client.id)
+        }()
+    }
 }
