@@ -3,7 +3,7 @@
 // @author darryl.west@ebay.com
 // @created 2018-02-27 16:22:25
 
-package hub
+package proxy
 
 import "fmt"
 

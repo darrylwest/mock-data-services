@@ -9,14 +9,14 @@ package main
 import "./proxy"
 
 func main() {
-	hub.CreateLogger()
-	cfg := hub.ParseArgs()
+	proxy.CreateLogger()
+	cfg := proxy.ParseArgs()
 	if cfg == nil {
-		hub.ShowHelp()
+		proxy.ShowHelp()
 		return
 	}
 
-	service, err := hub.NewService(cfg)
+	service, err := proxy.NewService(cfg)
 	if err != nil {
 		panic(err)
 	}

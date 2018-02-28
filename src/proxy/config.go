@@ -4,7 +4,7 @@
 // @author darryl.west <darryl.west@ebay.com>
 // @created 2018-02-27 16:22:25
 
-package hub
+package proxy
 
 import (
 	"flag"
@@ -66,10 +66,10 @@ func ParseArgs() *Config {
 	log.Info("%s Version: %s\n", filepath.Base(os.Args[0]), Version())
 
 	cfg := Config{
-		Port:          *port,
-		LogLevel:      *level,
-		DbFilename:    *dbfilename,
-		Timeout:       *timeout,
+		Port:       *port,
+		LogLevel:   *level,
+		DbFilename: *dbfilename,
+		Timeout:    *timeout,
 	}
 
 	log.SetLevel(cfg.LogLevel)
