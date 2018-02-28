@@ -24,7 +24,8 @@ func TestConfig(t *testing.T) {
 		g.It("should create a context struct with defaults set", func() {
 			cfg := proxy.NewDefaultConfig()
 			g.Assert(fmt.Sprintf("%T", cfg)).Equal("*proxy.Config")
-			g.Assert(cfg.Port).Equal(3000)
+			g.Assert(cfg.Port).Equal(3300)
+            g.Assert(cfg.BufSize).Equal(64)
 			g.Assert(cfg.LogLevel > 1).IsTrue()
 			g.Assert(cfg.DbFilename).Equal("data/proxy.db")
 		})
