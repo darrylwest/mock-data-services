@@ -17,13 +17,7 @@ import (
 type Config struct {
 	Port           int
 	LogLevel       int
-	MaxConcurrent  int
 	DbFilename     string
-	ConfigFilename string
-	StaticFolder   string
-	Site           string
-	Pool           string
-	MaxJobList     int
 	Timeout        int
 }
 
@@ -51,7 +45,7 @@ func ParseArgs() *Config {
 	dflt := NewDefaultConfig()
 
 	vers := flag.Bool("version", false, "show the version and exit")
-	level := flag.Int("loglevel", dflt.LogLevel, "set the server's log level 0..5 for trace..error, default info=2")
+	level := flag.Int("loglevel", dflt.LogLevel, "set the server's log level 0..5, default info=2")
 	port := flag.Int("port", dflt.Port, "set the server's listening port")
 	dbfilename := flag.String("db-filename", dflt.DbFilename, "set the databse file")
 	timeout := flag.Int("timeout", dflt.Timeout, "the timeout for both tests and builds in munutes")

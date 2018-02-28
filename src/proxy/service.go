@@ -47,5 +47,7 @@ func (svc Service) startServer() error {
 	host := fmt.Sprintf(":%d", cfg.Port)
 	log.Info("start listening on port %s", host)
 
+    // open the listening socket
+
 	return nil
 }
