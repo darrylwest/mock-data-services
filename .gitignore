@@ -1,4 +1,4 @@
-bin/test-runner
+bin
 groups/*
 BoltCommonUtils
 *.swp
