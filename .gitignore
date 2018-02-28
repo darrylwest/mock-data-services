@@ -1,0 +1,7 @@
+bin/test-runner
+groups/*
+BoltCommonUtils
+*.swp
+bin/automation-service
+bin/test-runner
+test/tmp/*.db
