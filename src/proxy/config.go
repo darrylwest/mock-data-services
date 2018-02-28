@@ -2,7 +2,7 @@
 // config  - application specification and CLI parsing
 //
 // @author darryl.west <darryl.west@ebay.com>
-// @created 2017-11-27 17:56:46
+// @created 2018-02-27 16:22:25
 
 package hub
 
@@ -33,12 +33,7 @@ func NewDefaultConfig() *Config {
 
 	cfg.Port = 3000
 	cfg.LogLevel = 2
-	cfg.MaxConcurrent = 8
-	cfg.DbFilename = "data/hub.db"
-	cfg.StaticFolder = "public-html"
-	cfg.Site = "US"
-	cfg.Pool = "www.sellexsvc-stg.qa.ebay.com" // "sellexsvc.stratus.qa.ebay.com"
-	cfg.MaxJobList = 8
+	cfg.DbFilename = "data/proxy.db"
 	cfg.Timeout = 20
 
 	return cfg
@@ -58,12 +53,7 @@ func ParseArgs() *Config {
 	vers := flag.Bool("version", false, "show the version and exit")
 	level := flag.Int("loglevel", dflt.LogLevel, "set the server's log level 0..5 for trace..error, default info=2")
 	port := flag.Int("port", dflt.Port, "set the server's listening port")
-	concurrent := flag.Int("max-concurrent", dflt.MaxConcurrent, "set the maximum number of concurrent tests")
 	dbfilename := flag.String("db-filename", dflt.DbFilename, "set the databse file")
-	staticFolder := flag.String("static", dflt.StaticFolder, "set the dashboard's static html folder")
-	site := flag.String("site", dflt.Site, "set the default site")
-	pool := flag.String("pool", dflt.Pool, "set the default pool")
-	maxJobList := flag.Int("max-job-list", dflt.MaxJobList, "the maximum number of jobs to display in detailed view")
 	timeout := flag.Int("timeout", dflt.Timeout, "the timeout for both tests and builds in munutes")
 
 	flag.Parse()
@@ -78,12 +68,7 @@ func ParseArgs() *Config {
 	cfg := Config{
 		Port:          *port,
 		LogLevel:      *level,
-		MaxConcurrent: *concurrent,
 		DbFilename:    *dbfilename,
-		StaticFolder:  *staticFolder,
-		Site:          *site,
-		Pool:          *pool,
-		MaxJobList:    *maxJobList,
 		Timeout:       *timeout,
 	}
 
