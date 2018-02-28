@@ -15,10 +15,10 @@ import (
 
 // Config the config structure
 type Config struct {
-	Port           int
-	LogLevel       int
-	DbFilename     string
-	Timeout        int
+	Port       int
+	LogLevel   int
+	DbFilename string
+	Timeout    int
 }
 
 // NewDefaultConfig default settings
