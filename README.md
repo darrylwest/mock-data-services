@@ -9,9 +9,11 @@
 
 ## Overview
 
+Mock Data Services are designed to intercept, record and play-back standard request/response patterns, whether REST or SOAP.  The L4 proxy listens for connections, stores incoming requests then sends the request to the remote target and stores the target's response.  Stored responses can then be used to short-circuit the full round trip to the target by returning qualified responses to recognized requests.
+
 ## Installation
 
 ### Download
 
-###### darryl.west | 2018.02.27
+###### darryl.west | 2018.02.28
 
