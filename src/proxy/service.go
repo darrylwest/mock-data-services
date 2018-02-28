@@ -65,7 +65,6 @@ func (svc Service) startServer() error {
 		}
 
         go func() {
-            defer sock.Close()
             client := NewClient(cfg)
 
             if err = client.handleRequest(sock); err != nil {

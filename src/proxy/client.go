@@ -43,33 +43,52 @@ func (client Client) GetCreatedAt() time.Time {
 }
 
 // ReadRequest reads the entire request and stores in client.request
-func (client Client) ReadRequest(src io.Reader) error {
+func (client *Client) ReadRequest(src io.Reader) error {
     size := 32 * 1024
     buf := make([]byte, size)
+    var err error
 
     for {
-        n, err := src.Read(buf)
+        n, e := src.Read(buf)
         if n > 0 {
             client.request = append(client.request, buf[0:n]...)
         }
 
-        if err != nil {
-            if err != io.EOF {
-                return err
+        if e != nil {
+            if e != io.EOF {
+                err = e
             }
-            return nil
+
+            break
         }
     }
+
+    return err
+}
+
+// SendResponse sends the response back to the original requestor
+func (client Client) SendResponse(dst io.Writer) error {
+    log.Info("send response...")
+    payload := []byte(`{"status":"ok"}` + "\r\n")
+
+    n, err := dst.Write(payload)
+    log.Info("%d bytes written...", n)
+
+    return err
 }
 
 func (client Client) handleRequest(sock net.Conn) error {
+    defer sock.Close()
     log.Info("handle request: %s %s", client.id, client.created.Format(time.RFC3339))
 
     // read the request in full
-    client.ReadRequest(sock)
+    sock.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
+    err := client.ReadRequest(sock)
 
     log.Info("request: %s", client.request)
 
-    return nil
+    err = client.SendResponse(sock)
+
+    return err
 }
 
