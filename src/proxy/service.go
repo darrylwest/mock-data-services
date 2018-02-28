@@ -14,13 +14,13 @@ import (
 
 // Service - the service struct
 type Service struct {
-	cfg      *Config
+	cfg *Config
 }
 
 // NewService create a new service by passing in config
 func NewService(cfg *Config) (*Service, error) {
 	svc := Service{
-		cfg:      cfg,
+		cfg: cfg,
 	}
 
 	return &svc, nil
@@ -31,7 +31,7 @@ func (svc Service) Start() error {
 	log.Info("start the hub service...")
 	// cfg := svc.cfg
 
-    // create and open the registry database
+	// create and open the registry database
 
 	// start the listener
 	if err := svc.startServer(); err != nil {
