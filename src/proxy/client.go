@@ -8,8 +8,10 @@
 package proxy
 
 import (
+    "fmt"
     "io"
 	"net"
+    "os"
     "time"
     "github.com/darrylwest/go-unique/unique"
 )
@@ -43,20 +45,23 @@ func (client Client) GetCreatedAt() time.Time {
 }
 
 // ReadRequest reads the entire request and stores in client.request
-func (client *Client) ReadRequest(src io.Reader) error {
+func (client Client) ReadRequest(src io.Reader, filename string) error {
     size := 32 * 1024
     buf := make([]byte, size)
     var err error
 
     for {
-        n, e := src.Read(buf)
+        n, er := src.Read(buf)
+
         if n > 0 {
-            client.request = append(client.request, buf[0:n]...)
+            if err := client.writeFile(filename, buf[0:n]); err != nil {
+                log.Error("error writing request: %s", err)
+            }
         }
 
-        if e != nil {
-            if e != io.EOF {
-                err = e
+        if er != nil {
+            if er != io.EOF {
+                err = er
             }
 
             break
@@ -82,13 +87,38 @@ func (client Client) handleRequest(sock net.Conn) error {
     log.Info("handle request: %s %s", client.id, client.created.Format(time.RFC3339))
 
     // read the request in full
-    sock.SetReadDeadline(time.Now().Add(1 * time.Millisecond))
-    err := client.ReadRequest(sock)
+    sock.SetReadDeadline(time.Now().Add(5000 * time.Millisecond))
 
-    log.Info("request: %s", client.request)
+    go func() {
+        filename := fmt.Sprintf("data/%s-request.log", client.id)
+        err := client.ReadRequest(sock, filename)
+        if err != nil {
+            log.Warn("%s", err)
+        }
+    }()
 
-    err = client.SendResponse(sock)
+    time.Sleep(2 * time.Second)
+    err := client.SendResponse(sock)
+    if err != nil {
+        log.Error("write : %s", err)
+    }
 
     return err
+}
+
+func (client Client) writeFile(filename string, buf []byte) error {
+    log.Info("write request to %s", filename)
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err = f.Write(buf); err != nil {
+		return err
+	}
+
+	_, err = f.WriteString("\n")
+	return err
 }
 
