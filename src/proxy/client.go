@@ -35,6 +35,12 @@ type ClientRequest struct {
     duration time.Duration
 }
 
+// ClientResponse holds status and content length
+type ClientResponse struct {
+    status string
+    size   int
+}
+
 // Client the client object, created for each new request
 type Client struct {
 	cfg      *Config
@@ -74,6 +80,33 @@ func (client Client) ParseContentLength(line string) (int, error) {
     }
 
     return val, err
+}
+
+// ParseResponse return the status and content length
+func (client Client) ParseResponse(buf []byte) *ClientResponse {
+    lines := bytes.Split(buf, []byte("\n"))
+    resp := ClientResponse{}
+
+    for idx, line := range lines {
+        if idx == 0 {
+            resp.status = string(line)
+
+            continue
+        }
+
+        // parse the content length
+        if len(line) < 80 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
+            log.Info("parse header: %s", line)
+            if val, err := client.ParseContentLength(string(line)); err == nil {
+                resp.size = val
+            }
+
+            break
+        }
+
+    }
+
+    return &resp
 }
 
 // ParseRequest parses the method, uri and content length
@@ -172,14 +205,18 @@ func (client *Client) ProxyRequest(dst, sock net.Conn) error {
         return err
     }
 
+    var resp *ClientResponse
     client.response = new(bytes.Buffer)
     buf := make([]byte, client.cfg.BufSize * 1024)
+    written := 0
     for {
         nr, er := sock.Read(buf)
         if nr > 0 {
+            log.Info("read from target %d bytes", nr)
             nw, ew := dst.Write(buf[0:nr])
             if nw > 0 {
                 client.response.Write(buf[0:nr])
+                written += nw
             }
 
             if ew != nil {
@@ -191,7 +228,16 @@ func (client *Client) ProxyRequest(dst, sock net.Conn) error {
                 err = fmt.Errorf("short write to client: %d != %d", nr, nw)
                 break
             }
+
+            if resp == nil {
+                resp = client.ParseResponse(buf[0:nr])
+            }
+
+            if written >= resp.size {
+                break
+            }
         }
+
         if er != nil {
             if er != io.EOF {
                 err = er
@@ -224,6 +270,11 @@ func (client Client) openTarget() (net.Conn, error) {
     log.Info("open the target: %s", cfg.Target)
     conn, err := net.Dial("tcp", cfg.Target)
 
+    if err == nil {
+        conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+        conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+    }
+
     return conn, err
 }
 
@@ -233,6 +284,7 @@ func (client *Client) handleRequest(sock net.Conn) error {
 
 	// read the request in full
 	sock.SetReadDeadline(time.Now().Add(20 * time.Second))
+	sock.SetWriteDeadline(time.Now().Add(10 * time.Second))
 
 	readComplete := make(chan *ClientRequest)
 	go func() {
@@ -264,7 +316,7 @@ func (client *Client) handleRequest(sock net.Conn) error {
 	clientRequest := <-readComplete
 
     if targetOpen {
-        log.Info("write resonse to the target...")
+        log.Info("write response to the target...")
         err = client.ProxyRequest(sock, target)
         if err != nil {
             log.Error("error proxying request: %s", err)
@@ -278,7 +330,7 @@ func (client *Client) handleRequest(sock net.Conn) error {
         }
     }
 
-    // now write to the reponse log
+    // now write to the response log
     if er := client.writeFile(client.GetResponseFilename(), client.response.Bytes()); er != nil {
         log.Error("writing response file: %s", er)
     }

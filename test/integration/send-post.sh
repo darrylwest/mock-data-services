@@ -109,4 +109,5 @@ data='{
   ]
 }'
 
-curl -H 'Content-Type: application/json' -d "$data" http://localhost:3300/myendpoint
+curl -v -H 'Content-Type: application/json' -d "$data" http://localhost:3300/status
+
