@@ -233,7 +233,7 @@ func (client *Client) ProxyRequest(dst, sock net.Conn) error {
 				resp = client.ParseResponse(buf[0:nr])
 			}
 
-			if written >= resp.size {
+			if resp.size > 0 && written >= resp.size {
 				break
 			}
 		}
