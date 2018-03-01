@@ -32,6 +32,7 @@ type ClientRequest struct {
     method string
     uri    string
     size   int
+    duration time.Duration
 }
 
 // Client the client object, created for each new request
@@ -95,7 +96,7 @@ func (client Client) ParseRequest(buf []byte) *ClientRequest {
         }
 
         // parse the content length
-        if len(line) < 100 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
+        if len(line) < 80 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
             log.Info("parse header: %s", line)
             if val, err := client.ParseContentLength(string(line)); err == nil {
                 req.size = val
@@ -136,7 +137,7 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) (*ClientRequest, 
 			}
 
 			if req == nil {
-				log.Info("parse %s", buf[0:nr])
+				log.Info("parse %d bytes", nr)
                 req = client.ParseRequest(buf[0:nr])
 			}
 
@@ -155,6 +156,11 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) (*ClientRequest, 
 	}
 
 	return req, err
+}
+
+// String show the volues for stats file
+func (cr ClientRequest) String() string {
+    return fmt.Sprintf("method: %s\nuri: %s\nbytes: %d\nduration: %s\n", cr.method, cr.uri, cr.size, cr.duration)
 }
 
 // SendResponse sends the response back to the original requestor
@@ -177,15 +183,23 @@ func (client Client) handleRequest(sock net.Conn) error {
 
 	readComplete := make(chan bool)
 	go func() {
-		// filename := fmt.Sprintf("data/%s-request.log", client.id)
 		client.request = new(bytes.Buffer)
 		req, err := client.ReadRequest(client.request, sock)
 		if err != nil {
 			log.Warn("%s", err)
 		}
 
-		log.Info("client request size: %d, content-length: %d", client.request.Len(), req.size)
 		readComplete <- true
+
+        req.duration = time.Now().Sub(client.created)
+
+		log.Info("client request size: %d, content-length: %d, read time: %s", client.request.Len(), req.size, req.duration)
+
+		filename := fmt.Sprintf("data/%s-request.log", client.id)
+        client.writeFile(filename, client.request.Bytes())
+
+		filename = fmt.Sprintf("data/%s-stats.log", client.id)
+        client.writeFile(filename, []byte(req.String()))
 	}()
 
 	<-readComplete

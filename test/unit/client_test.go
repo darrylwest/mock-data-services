@@ -32,6 +32,17 @@ func TestClient(t *testing.T) {
 			g.Assert(client.GetCreatedAt().After(now)).IsTrue()
 		})
 
+		g.It("should parse a request content length", func() {
+            sz := 5543
+            line := fmt.Sprintf("Content-Length: %d\r", sz)
+
+			client := proxy.NewClient(cfg)
+
+            val, err := client.ParseContentLength(line)
+            g.Assert(err).Equal(nil)
+            g.Assert(val).Equal(sz)
+        })
+
 		g.It("should handle a mock request")
 	})
 }

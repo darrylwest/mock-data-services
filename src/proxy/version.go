@@ -9,8 +9,8 @@ import "fmt"
 
 const (
 	major = 18
-	minor = 2
-	patch = 28
+	minor = 3
+	patch = 1
 	logo  = `
  __  __         _     ___       _          ___                  
 |  \/  |___  __| |__ |   \ __ _| |_ __ _  | _ \_ _ _____ ___  _ 
