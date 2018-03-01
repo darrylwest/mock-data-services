@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const stdresp = `HTTP/1.1 200 OK
+const mockresp = `HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Thu, 01 Mar 2018 15:03:07 GMT
 Content-Length: 262
@@ -163,25 +163,78 @@ func (cr ClientRequest) String() string {
     return fmt.Sprintf("method: %s\nuri: %s\nbytes: %d\nduration: %s\n", cr.method, cr.uri, cr.size, cr.duration)
 }
 
-// SendResponse sends the response back to the original requestor
-func (client Client) SendResponse(dst io.Writer) error {
-	log.Info("send response...")
+// ProxyRequest send the request bytes to the target
+func (client *Client) ProxyRequest(dst, sock net.Conn) error {
+    n, err := sock.Write(client.request.Bytes())
+    log.Info("%d bytes of %d written to target", n, client.request.Len())
 
-    payload := []byte(stdresp)
-	n, err := dst.Write(payload)
+    if err != nil && err != io.EOF {
+        return err
+    }
+
+    client.response = new(bytes.Buffer)
+    buf := make([]byte, client.cfg.BufSize * 1024)
+    for {
+        nr, er := sock.Read(buf)
+        if nr > 0 {
+            nw, ew := dst.Write(buf[0:nr])
+            if nw > 0 {
+                client.response.Write(buf[0:nr])
+            }
+
+            if ew != nil {
+                err = ew
+                break
+            }
+
+            if nr != nw {
+                err = fmt.Errorf("short write to client: %d != %d", nr, nw)
+                break
+            }
+        }
+        if er != nil {
+            if er != io.EOF {
+                err = er
+                break
+            }
+        }
+
+    }
+
+    return err
+}
+
+// SendResponse sends the response back to the original requestor
+func (client Client) SendResponse(dst io.Writer, resp []byte) error {
+	log.Info("send response, size: %d", len(resp))
+
+	n, err := dst.Write(resp)
 	log.Info("%d bytes written...", n)
 
 	return err
 }
 
-func (client Client) handleRequest(sock net.Conn) error {
+func (client Client) openTarget() (net.Conn, error) {
+    cfg := client.cfg
+    var conn net.Conn
+    if cfg.Bypass {
+        return conn, nil
+    }
+
+    log.Info("open the target: %s", cfg.Target)
+    conn, err := net.Dial("tcp", cfg.Target)
+
+    return conn, err
+}
+
+func (client *Client) handleRequest(sock net.Conn) error {
 	defer sock.Close()
 	log.Info("handle request: %s %s", client.id, client.created.Format(time.RFC3339))
 
 	// read the request in full
 	sock.SetReadDeadline(time.Now().Add(20 * time.Second))
 
-	readComplete := make(chan bool)
+	readComplete := make(chan *ClientRequest)
 	go func() {
 		client.request = new(bytes.Buffer)
 		req, err := client.ReadRequest(client.request, sock)
@@ -189,27 +242,53 @@ func (client Client) handleRequest(sock net.Conn) error {
 			log.Warn("%s", err)
 		}
 
-		readComplete <- true
+		readComplete <- req
 
         req.duration = time.Now().Sub(client.created)
 
 		log.Info("client request size: %d, content-length: %d, read time: %s", client.request.Len(), req.size, req.duration)
 
-		filename := fmt.Sprintf("data/%s-request.log", client.id)
-        client.writeFile(filename, client.request.Bytes())
-
-		filename = fmt.Sprintf("data/%s-stats.log", client.id)
-        client.writeFile(filename, []byte(req.String()))
+        client.writeFile(client.GetRequestFilename(), client.request.Bytes())
+        client.writeFile(client.GetStatsFilename(), []byte(req.String()))
 	}()
 
-	<-readComplete
+    targetOpen := false
+    target, err := client.openTarget()
+    if err != nil {
+        log.Error("error opening target: %s", err)
+        defer target.Close()
+    } else {
+        targetOpen = true
+    }
 
-	err := client.SendResponse(sock)
-	if err != nil {
-		log.Error("write : %s", err)
-	}
+	clientRequest := <-readComplete
+
+    if targetOpen {
+        log.Info("write resonse to the target...")
+        err = client.ProxyRequest(sock, target)
+        if err != nil {
+            log.Error("error proxying request: %s", err)
+        }
+        log.Info("response size: %d", client.response.Len())
+    } else {
+        client.response = client.GetMockResponse(clientRequest)
+        err = client.SendResponse(sock, client.response.Bytes())
+        if err != nil {
+            log.Error("write : %s", err)
+        }
+    }
+
+    // now write to the reponse log
+    if er := client.writeFile(client.GetResponseFilename(), client.response.Bytes()); er != nil {
+        log.Error("writing response file: %s", er)
+    }
 
 	return err
+}
+
+// GetMockResponse reads the registry based on method/uri and returns a mock
+func (client Client) GetMockResponse(req *ClientRequest) *bytes.Buffer {
+    return bytes.NewBuffer([]byte(mockresp))
 }
 
 func (client Client) writeFile(filename string, buf []byte) error {
@@ -226,4 +305,19 @@ func (client Client) writeFile(filename string, buf []byte) error {
 
 	_, err = f.WriteString("\n")
 	return err
+}
+
+// GetRequestFilename returns the request filename for this client
+func (client Client) GetRequestFilename() string {
+    return fmt.Sprintf("data/%s-request.log", client.id)
+}
+
+// GetResponseFilename returns the stats filename for this client
+func (client Client) GetResponseFilename() string {
+    return fmt.Sprintf("data/%s-response.log", client.id)
+}
+
+// GetStatsFilename returns the stats filename for this client
+func (client Client) GetStatsFilename() string {
+    return fmt.Sprintf("data/%s-stats.log", client.id)
 }

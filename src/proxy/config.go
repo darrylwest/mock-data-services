@@ -17,6 +17,7 @@ import (
 type Config struct {
 	Port       int
 	Target     string
+    Bypass     bool
 	LogLevel   int
 	DbFilename string
 	Timeout    int
@@ -52,6 +53,7 @@ func ParseArgs() *Config {
 	level := flag.Int("loglevel", dflt.LogLevel, "set the server's log level 0..5, default info=2")
 	port := flag.Int("port", dflt.Port, "set the server's listening port")
 	target := flag.String("target", dflt.Target, "the address and port of the target machine")
+	bypass := flag.Bool("bypass", dflt.Bypass, "bypass connection to target and return only mock data")
 	dbfilename := flag.String("db-filename", dflt.DbFilename, "set the databse file")
 	timeout := flag.Int("timeout", dflt.Timeout, "the timeout for both tests and builds in seconds")
 	bufsize := flag.Int("bufsize", dflt.BufSize, "the buffer size in 1K increments")
@@ -70,6 +72,7 @@ func ParseArgs() *Config {
 	cfg := Config{
 		Port:       *port,
 		Target:     *target,
+        Bypass:     *bypass,
 		LogLevel:   *level,
 		DbFilename: *dbfilename,
 		Timeout:    *timeout,
