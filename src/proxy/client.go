@@ -8,6 +8,7 @@
 package proxy
 
 import (
+    "bytes"
     "fmt"
     "io"
 	"net"
@@ -21,8 +22,8 @@ type Client struct {
     cfg *Config
     id  string
     created time.Time
-    request []byte
-    response []byte
+    request *bytes.Buffer
+    response *bytes.Buffer
 }
 
 // NewClient create a new client with config, id and date created
@@ -45,17 +46,33 @@ func (client Client) GetCreatedAt() time.Time {
 }
 
 // ReadRequest reads the entire request and stores in client.request
-func (client Client) ReadRequest(src io.Reader, filename string) error {
+func (client Client) ReadRequest(dst io.Writer, src io.Reader) error {
     size := 32 * 1024
     buf := make([]byte, size)
+    copied := 0
     var err error
+    loopCount := 0
 
     for {
-        n, er := src.Read(buf)
+        nr, er := src.Read(buf)
+        loopCount++
 
-        if n > 0 {
-            if err := client.writeFile(filename, buf[0:n]); err != nil {
-                log.Error("error writing request: %s", err)
+        if nr > 0 {
+            nw, er := dst.Write(buf[0:nr])
+            if nw > 0 {
+                copied += nw
+            }
+            if er != nil {
+                err = er
+                break
+            }
+            if nw != nr {
+                err = fmt.Errorf("number of bytes written does not match")
+                break
+            }
+
+            if loopCount > 1 {
+                break
             }
         }
 
@@ -87,17 +104,23 @@ func (client Client) handleRequest(sock net.Conn) error {
     log.Info("handle request: %s %s", client.id, client.created.Format(time.RFC3339))
 
     // read the request in full
-    sock.SetReadDeadline(time.Now().Add(5000 * time.Millisecond))
+    sock.SetReadDeadline(time.Now().Add(20 * time.Second))
 
+    readComplete := make(chan bool)
     go func() {
-        filename := fmt.Sprintf("data/%s-request.log", client.id)
-        err := client.ReadRequest(sock, filename)
+        // filename := fmt.Sprintf("data/%s-request.log", client.id)
+        client.request = new(bytes.Buffer)
+        err := client.ReadRequest(client.request, sock)
         if err != nil {
             log.Warn("%s", err)
         }
+
+        log.Info("%s", client.request.String())
+        readComplete <- true
     }()
 
-    time.Sleep(2 * time.Second)
+    <- readComplete
+
     err := client.SendResponse(sock)
     if err != nil {
         log.Error("write : %s", err)
