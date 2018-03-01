@@ -14,8 +14,25 @@ import (
 	"io"
 	"net"
 	"os"
+    "strings"
+    "strconv"
 	"time"
 )
+
+const stdresp = `HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Thu, 01 Mar 2018 15:03:07 GMT
+Content-Length: 262
+
+{"status":"ok","ts":1519916587296,"version":"1.0","webStatus":{"agent":"curl/7.54.0","host":"127.0.0.1:3400","path":"/status","pid":9819,"proto":"HTTP/1.1","remoteAddr":"127.0.0.1:38396","version":"0.90.128","xForwardedFor":"73.158.29.165","xForwardedProto":""}}
+`
+
+// ClientRequest the parsed client request 
+type ClientRequest struct {
+    method string
+    uri    string
+    size   int
+}
 
 // Client the client object, created for each new request
 type Client struct {
@@ -45,24 +62,66 @@ func (client Client) GetCreatedAt() time.Time {
 	return client.created
 }
 
+// ParseContentLength parse the content length header
+func (client Client) ParseContentLength(line string) (int, error) {
+    cols := strings.Split(line, ":")
+    sz := strings.Trim(cols[1], " \r")
+
+    val, err := strconv.Atoi(string(sz))
+    if err != nil {
+        log.Error("parse content length error: %s : %s", sz, err)
+    }
+
+    return val, err
+}
+
+// ParseRequest parses the method, uri and content length
+func (client Client) ParseRequest(buf []byte) *ClientRequest {
+    lines := bytes.Split(buf, []byte("\n"))
+
+    req := ClientRequest{}
+
+    for idx, line := range lines {
+        if idx == 0 {
+            cols := bytes.Split(line, []byte(" "))
+            req.method = string(cols[0])
+            req.uri = string(cols[1])
+
+            if req.method == "GET" {
+                break
+            }
+
+            continue
+        }
+
+        // parse the content length
+        if len(line) < 100 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
+            log.Info("parse header: %s", line)
+            if val, err := client.ParseContentLength(string(line)); err == nil {
+                req.size = val
+            }
+
+            break
+        }
+    }
+
+    log.Info("line count: %d, method: %s, uri: %s, size: %d", len(lines), req.method, req.uri, req.size)
+
+    return &req
+}
+
 // ReadRequest reads the entire request and stores in client.request
-func (client Client) ReadRequest(dst io.Writer, src io.Reader) error {
-	size := 32 * 1024
+func (client Client) ReadRequest(dst io.Writer, src io.Reader) (*ClientRequest, error) {
+	size := 16 * 1024
 	buf := make([]byte, size)
 	copied := 0
 	var err error
-	loopCount := 0
-    loopLimit := 2
+    var req *ClientRequest
 
 	for {
 		nr, er := src.Read(buf)
-		loopCount++
 
 		if nr > 0 {
-            if loopCount == 1 {
-                log.Info("loop 1: %s", buf[0:nr])
-            }
-
 			nw, er := dst.Write(buf[0:nr])
 			if nw > 0 {
 				copied += nw
@@ -76,9 +135,14 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) error {
 				break
 			}
 
-			if loopCount >= loopLimit {
-				break
+			if req == nil {
+				log.Info("parse %s", buf[0:nr])
+                req = client.ParseRequest(buf[0:nr])
 			}
+
+            if req.method == "GET" || copied >= req.size {
+                break
+            }
 		}
 
 		if er != nil {
@@ -90,14 +154,14 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) error {
 		}
 	}
 
-	return err
+	return req, err
 }
 
 // SendResponse sends the response back to the original requestor
 func (client Client) SendResponse(dst io.Writer) error {
 	log.Info("send response...")
-	payload := []byte(`{"status":"ok"}` + "\r\n")
 
+    payload := []byte(stdresp)
 	n, err := dst.Write(payload)
 	log.Info("%d bytes written...", n)
 
@@ -115,12 +179,12 @@ func (client Client) handleRequest(sock net.Conn) error {
 	go func() {
 		// filename := fmt.Sprintf("data/%s-request.log", client.id)
 		client.request = new(bytes.Buffer)
-		err := client.ReadRequest(client.request, sock)
+		req, err := client.ReadRequest(client.request, sock)
 		if err != nil {
 			log.Warn("%s", err)
 		}
 
-		log.Info("%s", client.request.String())
+		log.Info("client request size: %d, content-length: %d", client.request.Len(), req.size)
 		readComplete <- true
 	}()
 
