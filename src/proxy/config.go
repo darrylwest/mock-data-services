@@ -63,7 +63,7 @@ func ParseArgs() *Config {
 	}
 
 	fmt.Println(logo)
-    fmt.Printf("Version %s\n", Version())
+	fmt.Printf("Version %s\n", Version())
 
 	log.Info("%s Version: %s\n", filepath.Base(os.Args[0]), Version())
 

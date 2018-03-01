@@ -43,35 +43,35 @@ func (svc Service) Start() error {
 
 func (svc Service) startServer() error {
 	cfg := svc.cfg
-    port := cfg.Port
+	port := cfg.Port
 
 	host := fmt.Sprintf(":%d", cfg.Port)
 	log.Info("start listening on port %s", host)
 
 	// open the listening socket
-    listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-    if err != nil {
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
 		log.Error("could not start server on %d: %v", port, err)
 		return err
-    }
+	}
 
 	log.Info("proxy listening on %d, proxy to %s\n", port, cfg.Target)
 
-    for {
-        sock, err := listener.Accept()
+	for {
+		sock, err := listener.Accept()
 		if err != nil {
 			log.Error("could not accept client connection", err)
 			return err
 		}
 
-        go func() {
-            client := NewClient(cfg)
+		go func() {
+			client := NewClient(cfg)
 
-            if err = client.handleRequest(sock); err != nil {
-                log.Error("client %s error: %s", client.id, err);
-            }
+			if err = client.handleRequest(sock); err != nil {
+				log.Error("client %s error: %s", client.id, err)
+			}
 
-            log.Info("%s closed...", client.id)
-        }()
-    }
+			log.Info("%s closed...", client.id)
+		}()
+	}
 }
