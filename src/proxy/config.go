@@ -17,7 +17,7 @@ import (
 type Config struct {
 	Port       int
 	Target     string
-    Bypass     bool
+	Bypass     bool
 	LogLevel   int
 	DbFilename string
 	Timeout    int
@@ -72,7 +72,7 @@ func ParseArgs() *Config {
 	cfg := Config{
 		Port:       *port,
 		Target:     *target,
-        Bypass:     *bypass,
+		Bypass:     *bypass,
 		LogLevel:   *level,
 		DbFilename: *dbfilename,
 		Timeout:    *timeout,

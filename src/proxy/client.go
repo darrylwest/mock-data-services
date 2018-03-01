@@ -14,8 +14,8 @@ import (
 	"io"
 	"net"
 	"os"
-    "strings"
-    "strconv"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -27,18 +27,18 @@ Content-Length: 262
 {"status":"ok","ts":1519916587296,"version":"1.0","webStatus":{"agent":"curl/7.54.0","host":"127.0.0.1:3400","path":"/status","pid":9819,"proto":"HTTP/1.1","remoteAddr":"127.0.0.1:38396","version":"0.90.128","xForwardedFor":"73.158.29.165","xForwardedProto":""}}
 `
 
-// ClientRequest the parsed client request 
+// ClientRequest the parsed client request
 type ClientRequest struct {
-    method string
-    uri    string
-    size   int
-    duration time.Duration
+	method   string
+	uri      string
+	size     int
+	duration time.Duration
 }
 
 // ClientResponse holds status and content length
 type ClientResponse struct {
-    status string
-    size   int
+	status string
+	size   int
 }
 
 // Client the client object, created for each new request
@@ -71,77 +71,77 @@ func (client Client) GetCreatedAt() time.Time {
 
 // ParseContentLength parse the content length header
 func (client Client) ParseContentLength(line string) (int, error) {
-    cols := strings.Split(line, ":")
-    sz := strings.Trim(cols[1], " \r")
+	cols := strings.Split(line, ":")
+	sz := strings.Trim(cols[1], " \r")
 
-    val, err := strconv.Atoi(string(sz))
-    if err != nil {
-        log.Error("parse content length error: %s : %s", sz, err)
-    }
+	val, err := strconv.Atoi(string(sz))
+	if err != nil {
+		log.Error("parse content length error: %s : %s", sz, err)
+	}
 
-    return val, err
+	return val, err
 }
 
 // ParseResponse return the status and content length
 func (client Client) ParseResponse(buf []byte) *ClientResponse {
-    lines := bytes.Split(buf, []byte("\n"))
-    resp := ClientResponse{}
+	lines := bytes.Split(buf, []byte("\n"))
+	resp := ClientResponse{}
 
-    for idx, line := range lines {
-        if idx == 0 {
-            resp.status = string(line)
+	for idx, line := range lines {
+		if idx == 0 {
+			resp.status = string(line)
 
-            continue
-        }
+			continue
+		}
 
-        // parse the content length
-        if len(line) < 80 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
-            log.Info("parse header: %s", line)
-            if val, err := client.ParseContentLength(string(line)); err == nil {
-                resp.size = val
-            }
+		// parse the content length
+		if len(line) < 80 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
+			log.Info("parse header: %s", line)
+			if val, err := client.ParseContentLength(string(line)); err == nil {
+				resp.size = val
+			}
 
-            break
-        }
+			break
+		}
 
-    }
+	}
 
-    return &resp
+	return &resp
 }
 
 // ParseRequest parses the method, uri and content length
 func (client Client) ParseRequest(buf []byte) *ClientRequest {
-    lines := bytes.Split(buf, []byte("\n"))
+	lines := bytes.Split(buf, []byte("\n"))
 
-    req := ClientRequest{}
+	req := ClientRequest{}
 
-    for idx, line := range lines {
-        if idx == 0 {
-            cols := bytes.Split(line, []byte(" "))
-            req.method = string(cols[0])
-            req.uri = string(cols[1])
+	for idx, line := range lines {
+		if idx == 0 {
+			cols := bytes.Split(line, []byte(" "))
+			req.method = string(cols[0])
+			req.uri = string(cols[1])
 
-            if req.method == "GET" {
-                break
-            }
+			if req.method == "GET" {
+				break
+			}
 
-            continue
-        }
+			continue
+		}
 
-        // parse the content length
-        if len(line) < 80 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
-            log.Info("parse header: %s", line)
-            if val, err := client.ParseContentLength(string(line)); err == nil {
-                req.size = val
-            }
+		// parse the content length
+		if len(line) < 80 && bytes.HasPrefix(bytes.ToUpper(line), []byte("CONTENT-LENGTH:")) {
+			log.Info("parse header: %s", line)
+			if val, err := client.ParseContentLength(string(line)); err == nil {
+				req.size = val
+			}
 
-            break
-        }
-    }
+			break
+		}
+	}
 
-    log.Info("line count: %d, method: %s, uri: %s, size: %d", len(lines), req.method, req.uri, req.size)
+	log.Info("line count: %d, method: %s, uri: %s, size: %d", len(lines), req.method, req.uri, req.size)
 
-    return &req
+	return &req
 }
 
 // ReadRequest reads the entire request and stores in client.request
@@ -150,7 +150,7 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) (*ClientRequest, 
 	buf := make([]byte, size)
 	copied := 0
 	var err error
-    var req *ClientRequest
+	var req *ClientRequest
 
 	for {
 		nr, er := src.Read(buf)
@@ -171,12 +171,12 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) (*ClientRequest, 
 
 			if req == nil {
 				log.Info("parse %d bytes", nr)
-                req = client.ParseRequest(buf[0:nr])
+				req = client.ParseRequest(buf[0:nr])
 			}
 
-            if req.method == "GET" || copied >= req.size {
-                break
-            }
+			if req.method == "GET" || copied >= req.size {
+				break
+			}
 		}
 
 		if er != nil {
@@ -193,61 +193,61 @@ func (client Client) ReadRequest(dst io.Writer, src io.Reader) (*ClientRequest, 
 
 // String show the volues for stats file
 func (cr ClientRequest) String() string {
-    return fmt.Sprintf("method: %s\nuri: %s\nbytes: %d\nduration: %s\n", cr.method, cr.uri, cr.size, cr.duration)
+	return fmt.Sprintf("method: %s\nuri: %s\nbytes: %d\nduration: %s\n", cr.method, cr.uri, cr.size, cr.duration)
 }
 
 // ProxyRequest send the request bytes to the target
 func (client *Client) ProxyRequest(dst, sock net.Conn) error {
-    n, err := sock.Write(client.request.Bytes())
-    log.Info("%d bytes of %d written to target", n, client.request.Len())
+	n, err := sock.Write(client.request.Bytes())
+	log.Info("%d bytes of %d written to target", n, client.request.Len())
 
-    if err != nil && err != io.EOF {
-        return err
-    }
+	if err != nil && err != io.EOF {
+		return err
+	}
 
-    var resp *ClientResponse
-    client.response = new(bytes.Buffer)
-    buf := make([]byte, client.cfg.BufSize * 1024)
-    written := 0
-    for {
-        nr, er := sock.Read(buf)
-        if nr > 0 {
-            log.Info("read from target %d bytes", nr)
-            nw, ew := dst.Write(buf[0:nr])
-            if nw > 0 {
-                client.response.Write(buf[0:nr])
-                written += nw
-            }
+	var resp *ClientResponse
+	client.response = new(bytes.Buffer)
+	buf := make([]byte, client.cfg.BufSize*1024)
+	written := 0
+	for {
+		nr, er := sock.Read(buf)
+		if nr > 0 {
+			log.Info("read from target %d bytes", nr)
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				client.response.Write(buf[0:nr])
+				written += nw
+			}
 
-            if ew != nil {
-                err = ew
-                break
-            }
+			if ew != nil {
+				err = ew
+				break
+			}
 
-            if nr != nw {
-                err = fmt.Errorf("short write to client: %d != %d", nr, nw)
-                break
-            }
+			if nr != nw {
+				err = fmt.Errorf("short write to client: %d != %d", nr, nw)
+				break
+			}
 
-            if resp == nil {
-                resp = client.ParseResponse(buf[0:nr])
-            }
+			if resp == nil {
+				resp = client.ParseResponse(buf[0:nr])
+			}
 
-            if written >= resp.size {
-                break
-            }
-        }
+			if written >= resp.size {
+				break
+			}
+		}
 
-        if er != nil {
-            if er != io.EOF {
-                err = er
-                break
-            }
-        }
+		if er != nil {
+			if er != io.EOF {
+				err = er
+				break
+			}
+		}
 
-    }
+	}
 
-    return err
+	return err
 }
 
 // SendResponse sends the response back to the original requestor
@@ -261,21 +261,21 @@ func (client Client) SendResponse(dst io.Writer, resp []byte) error {
 }
 
 func (client Client) openTarget() (net.Conn, error) {
-    cfg := client.cfg
-    var conn net.Conn
-    if cfg.Bypass {
-        return conn, nil
-    }
+	cfg := client.cfg
+	var conn net.Conn
+	if cfg.Bypass {
+		return conn, nil
+	}
 
-    log.Info("open the target: %s", cfg.Target)
-    conn, err := net.Dial("tcp", cfg.Target)
+	log.Info("open the target: %s", cfg.Target)
+	conn, err := net.Dial("tcp", cfg.Target)
 
-    if err == nil {
-        conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-        conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-    }
+	if err == nil {
+		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	}
 
-    return conn, err
+	return conn, err
 }
 
 func (client *Client) handleRequest(sock net.Conn) error {
@@ -296,51 +296,51 @@ func (client *Client) handleRequest(sock net.Conn) error {
 
 		readComplete <- req
 
-        req.duration = time.Now().Sub(client.created)
+		req.duration = time.Now().Sub(client.created)
 
 		log.Info("client request size: %d, content-length: %d, read time: %s", client.request.Len(), req.size, req.duration)
 
-        client.writeFile(client.GetRequestFilename(), client.request.Bytes())
-        client.writeFile(client.GetStatsFilename(), []byte(req.String()))
+		client.writeFile(client.GetRequestFilename(), client.request.Bytes())
+		client.writeFile(client.GetStatsFilename(), []byte(req.String()))
 	}()
 
-    targetOpen := false
-    target, err := client.openTarget()
-    if err != nil {
-        log.Error("error opening target: %s", err)
-        defer target.Close()
-    } else {
-        targetOpen = true
-    }
+	targetOpen := false
+	target, err := client.openTarget()
+	if err != nil {
+		log.Error("error opening target: %s", err)
+		defer target.Close()
+	} else {
+		targetOpen = true
+	}
 
 	clientRequest := <-readComplete
 
-    if targetOpen {
-        log.Info("write response to the target...")
-        err = client.ProxyRequest(sock, target)
-        if err != nil {
-            log.Error("error proxying request: %s", err)
-        }
-        log.Info("response size: %d", client.response.Len())
-    } else {
-        client.response = client.GetMockResponse(clientRequest)
-        err = client.SendResponse(sock, client.response.Bytes())
-        if err != nil {
-            log.Error("write : %s", err)
-        }
-    }
+	if targetOpen {
+		log.Info("write response to the target...")
+		err = client.ProxyRequest(sock, target)
+		if err != nil {
+			log.Error("error proxying request: %s", err)
+		}
+		log.Info("response size: %d", client.response.Len())
+	} else {
+		client.response = client.GetMockResponse(clientRequest)
+		err = client.SendResponse(sock, client.response.Bytes())
+		if err != nil {
+			log.Error("write : %s", err)
+		}
+	}
 
-    // now write to the response log
-    if er := client.writeFile(client.GetResponseFilename(), client.response.Bytes()); er != nil {
-        log.Error("writing response file: %s", er)
-    }
+	// now write to the response log
+	if er := client.writeFile(client.GetResponseFilename(), client.response.Bytes()); er != nil {
+		log.Error("writing response file: %s", er)
+	}
 
 	return err
 }
 
 // GetMockResponse reads the registry based on method/uri and returns a mock
 func (client Client) GetMockResponse(req *ClientRequest) *bytes.Buffer {
-    return bytes.NewBuffer([]byte(mockresp))
+	return bytes.NewBuffer([]byte(mockresp))
 }
 
 func (client Client) writeFile(filename string, buf []byte) error {
@@ -361,15 +361,15 @@ func (client Client) writeFile(filename string, buf []byte) error {
 
 // GetRequestFilename returns the request filename for this client
 func (client Client) GetRequestFilename() string {
-    return fmt.Sprintf("data/%s-request.log", client.id)
+	return fmt.Sprintf("data/%s-request.log", client.id)
 }
 
 // GetResponseFilename returns the stats filename for this client
 func (client Client) GetResponseFilename() string {
-    return fmt.Sprintf("data/%s-response.log", client.id)
+	return fmt.Sprintf("data/%s-response.log", client.id)
 }
 
 // GetStatsFilename returns the stats filename for this client
 func (client Client) GetStatsFilename() string {
-    return fmt.Sprintf("data/%s-stats.log", client.id)
+	return fmt.Sprintf("data/%s-stats.log", client.id)
 }
