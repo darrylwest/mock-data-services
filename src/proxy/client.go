@@ -271,8 +271,8 @@ func (client Client) openTarget() (net.Conn, error) {
 	conn, err := net.Dial("tcp", cfg.Target)
 
 	if err == nil {
-		conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-		conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		conn.SetWriteDeadline(time.Now().Add(20 * time.Second))
+		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	}
 
 	return conn, err
