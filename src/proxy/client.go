@@ -19,14 +19,6 @@ import (
 	"time"
 )
 
-const mockresp = `HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Thu, 01 Mar 2018 15:03:07 GMT
-Content-Length: 262
-
-{"status":"ok","ts":1519916587296,"version":"1.0","webStatus":{"agent":"curl/7.54.0","host":"127.0.0.1:3400","path":"/status","pid":9819,"proto":"HTTP/1.1","remoteAddr":"127.0.0.1:38396","version":"0.90.128","xForwardedFor":"73.158.29.165","xForwardedProto":""}}
-`
-
 // ClientRequest the parsed client request
 type ClientRequest struct {
 	method   string
@@ -313,7 +305,7 @@ func (client *Client) handleRequest(sock net.Conn) error {
 		targetOpen = true
 	}
 
-	clientRequest := <-readComplete
+	<-readComplete
 
 	if targetOpen {
 		log.Info("write response to the target...")
@@ -323,11 +315,7 @@ func (client *Client) handleRequest(sock net.Conn) error {
 		}
 		log.Info("response size: %d", client.response.Len())
 	} else {
-		client.response = client.GetMockResponse(clientRequest)
-		err = client.SendResponse(sock, client.response.Bytes())
-		if err != nil {
-			log.Error("write : %s", err)
-		}
+        log.Error("write : %s", err)
 	}
 
 	// now write to the response log
@@ -336,11 +324,6 @@ func (client *Client) handleRequest(sock net.Conn) error {
 	}
 
 	return err
-}
-
-// GetMockResponse reads the registry based on method/uri and returns a mock
-func (client Client) GetMockResponse(req *ClientRequest) *bytes.Buffer {
-	return bytes.NewBuffer([]byte(mockresp))
 }
 
 func (client Client) writeFile(filename string, buf []byte) error {
